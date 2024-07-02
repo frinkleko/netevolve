@@ -9,7 +9,6 @@ from data_loader import (
 TOTAL_TIME = 10
 
 
-
 class LoadDataset:
     adj = []
     feature = []

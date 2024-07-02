@@ -8,6 +8,7 @@ class Interest(IntEnum):
 
 
 class Agent:
+
     def __init__(
         self,
         actv_temp: float = 1.0,

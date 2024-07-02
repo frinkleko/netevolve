@@ -1,11 +1,7 @@
 # Standard Library
-import math
 from typing import Any
 
 # Third Party Library
-import networkx as nx
-import numpy as np
-import scipy
 import torch
 
 # First Party Library
@@ -15,6 +11,7 @@ device = config.select_device
 
 
 class Env:
+
     def __init__(self, edges, feature, temper, alpha, beta, gamma) -> None:
         self.edges = edges
         self.feature = feature.to(device)
@@ -41,17 +38,11 @@ class Env:
         # 特徴量の正規化
         norm = attributes.norm(dim=1)[:, None] + 1e-8
         attributes = attributes.div(norm)
-        reward = (
-            torch.sum(
-                torch.softmax(torch.abs(attributes - self.feature), dim=1),
-                dim=1,
-            )
-            * self.gamma
-        )
+        reward = (torch.sum(
+            torch.softmax(torch.abs(attributes - self.feature), dim=1),
+            dim=1,
+        ) * self.gamma)
         self.feature = attributes
-        # 特徴量の正規化
-        # norm = self.feature.norm(dim=1)[:, None] + 1e-8
-        # self.feature = self.feature.div(norm)
         self.feature_t = self.feature.t()
         next_mat = edges.bernoulli()
         dot_product = torch.mm(self.feature, self.feature_t)

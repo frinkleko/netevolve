@@ -48,8 +48,7 @@ def execute_data(trial) -> float:
     with open("model.param.data.fast", "r") as f:
         lines = f.readlines()
         for index, line in enumerate(
-            tqdm(lines, desc="load data", postfix="range", ncols=80)
-        ):
+                tqdm(lines, desc="load data", postfix="range", ncols=80)):
             datus = line[:-1].split(",")
             np_alpha.append(np.float32(datus[0]))
             np_beta.append(np.float32(datus[1]))
@@ -57,62 +56,23 @@ def execute_data(trial) -> float:
             np_delta.append(np.float32(datus[3]))
 
     # Define parameters of policy function
-    T = np.array(
-        [1.0 for i in range(len(np_alpha))],
-        dtype=np.float32,
-    )
-    e = np.array(
-        [1.0 for i in range(len(np_beta))],
-        dtype=np.float32,
-    )
-    r = np.array(
-        [1.0 for i in range(len(np_alpha))],
-        dtype=np.float32,
-    )
-    w = np.array(
-        [1e-0 for i in range(len(np_alpha))],
-        dtype=np.float32,
-    )
-    m = np.array(
-        [1e-2 for i in range(len(np_alpha))],
-        dtype=np.float32,
-    )
+    T = np.ones(np_alpha.shape, dtype=np.float32)
+    e = np.ones(np_beta.shape, dtype=np.float32)
+    r = np.ones(np_alpha.shape, dtype=np.float32)
+    w = np.ones(np_alpha.shape, dtype=np.float32)
+    m = np.ones(np_alpha.shape, dtype=np.float32)
 
     # Define parameters of reward Function
-    alpha = torch.from_numpy(
-        np.array(
-            np_alpha,
-            dtype=np.float32,
-        ),
-    ).to(device)
-
-    beta = torch.from_numpy(
-        np.array(
-            np_beta,
-            dtype=np.float32,
-        ),
-    ).to(device)
-
-    gamma = torch.from_numpy(
-        np.array(
-            np_gamma,
-            dtype=np.float32,
-        ),
-    ).to(device)
-
-    delta = torch.from_numpy(
-        np.array(
-            np_delta,
-            dtype=np.float32,
-        )
-    ).to(device)
+    alpha = torch.ones(np_alpha.shape, dtype=torch.float32).to(device)
+    beta = torch.ones(np_beta.shape, dtype=torch.float32).to(device)
+    gamma = torch.ones(np_gamma.shape, dtype=torch.float32).to(device)
+    delta = torch.ones(np_delta.shape, dtype=torch.float32).to(device)
 
     agent_policy = AgentPolicy(r=r, W=w, T=T, e=e, m=m)
     agent_optimizer = optim.Adadelta(agent_policy.parameters(), lr=lr)
 
     N = len(np_alpha)
     del np_alpha, np_beta, np_gamma, np_delta
-
     """_summary_
     setup data
     """
@@ -126,9 +86,10 @@ def execute_data(trial) -> float:
         gamma=gamma,
     )
     memory = []
-    for episode in tqdm(
-        range(episodes), desc="episode", postfix="range", ncols=100
-    ):
+    for episode in tqdm(range(episodes),
+                        desc="episode",
+                        postfix="range",
+                        ncols=100):
         if episode == 0:
             field.reset(
                 load_data.adj[LEARNED_TIME].clone(),
@@ -136,22 +97,21 @@ def execute_data(trial) -> float:
             )
 
         total_reward = 0
-        for i in tqdm(
-            range(story_count), desc="story", postfix="range", ncols=100
-        ):
+        for i in tqdm(range(story_count),
+                      desc="story",
+                      postfix="range",
+                      ncols=100):
             memory = []
             reward = 0
             neighbor_state, feat = field.state()
 
             action_probs, predict_feat, _ = agent_policy.predict(
-                edges=neighbor_state, attributes=feat, N=N
-            )
+                edges=neighbor_state, attributes=feat, N=N)
 
             # field.update_attributes(predict_feat.detach())
             # reward = field.step(action_probs.detach().clone())
-            reward = field.future_step(
-                action_probs.detach().clone(), predict_feat.detach()
-            )
+            reward = field.future_step(action_probs.detach().clone(),
+                                       predict_feat.detach())
 
             total_reward += reward
 
@@ -185,23 +145,16 @@ def execute_data(trial) -> float:
         neighbor_state, feat = field.state()
 
         action_probs, predict_feat, attr_probs = agent_policy.predict(
-            edges=neighbor_state, attributes=feat, N=N
-        )
+            edges=neighbor_state, attributes=feat, N=N)
         del neighbor_state, feat
 
-        # field.update_attributes(predict_feat)
-        # reward = field.step(action_probs)
-        # reward = field.future_step(action_probs, predict_feat)
         reward = field.future_step(action_probs, predict_feat)
 
         target_prob = torch.ravel(predict_feat).to("cpu")
         del attr_probs
         gc.collect()
-        detach_attr = (
-            torch.ravel(load_data.feature[GENERATE_TIME + t])
-            .detach()
-            .to("cpu")
-        )
+        detach_attr = (torch.ravel(load_data.feature[GENERATE_TIME +
+                                                     t]).detach().to("cpu"))
         detach_attr[detach_attr > 0] = 1.0
         pos_attr = detach_attr.numpy()
         attr_numpy = np.concatenate([pos_attr], 0)
@@ -209,14 +162,8 @@ def execute_data(trial) -> float:
 
         attr_predict_probs = np.concatenate([target_prob], 0)
         try:
-            # NLLを計算
-            # criterion = nn.CrossEntropyLoss()
-            # error_attr = criterion(
-            #     torch.from_numpy(attr_predict_probs),
-            #     torch.from_numpy(attr_numpy),
-            # )
             auc_actv = roc_auc_score(attr_numpy, attr_predict_probs)
-            attr_auc += auc_actv/ (TOTAL_TIME - GENERATE_TIME)
+            attr_auc += auc_actv / (TOTAL_TIME - GENERATE_TIME)
             attr_auc_log.append(auc_actv)
         except ValueError as ve:
             print(ve)
@@ -236,9 +183,8 @@ def execute_data(trial) -> float:
         target_prob = torch.ravel(action_probs).to("cpu")
         del action_probs
         gc.collect()
-        detach_edge = (
-            torch.ravel(load_data.adj[GENERATE_TIME + t]).detach().to("cpu")
-        )
+        detach_edge = (torch.ravel(load_data.adj[GENERATE_TIME +
+                                                 t]).detach().to("cpu"))
         pos_edge = detach_edge.numpy()
         edge_numpy = np.concatenate([pos_edge], 0)
         target_prob = target_prob.to("cpu").detach().numpy()
@@ -246,12 +192,6 @@ def execute_data(trial) -> float:
         edge_predict_probs = np.concatenate([target_prob], 0)
 
         try:
-            # NLLを計算
-            # criterion = nn.CrossEntropyLoss()
-            # error_edge = criterion(
-            #     torch.from_numpy(edge_predict_probs),
-            #     torch.from_numpy(edge_numpy),
-            # )
             auc_actv = roc_auc_score(edge_numpy, edge_predict_probs)
             edge_auc += auc_actv / (TOTAL_TIME - GENERATE_TIME)
             edge_auc_log.append(auc_actv)

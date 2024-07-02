@@ -1,7 +1,6 @@
 # Third Party Library
 import networkx as nx
 import numpy as np
-import torch
 from scipy import io
 
 # First Party Library
@@ -28,7 +27,8 @@ def spmat2tensor(sparse_mat):
 
     sparse_mat = sparse_mat.tocoo()
     sparse_tensor = torch.sparse.FloatTensor(
-        torch.LongTensor([sparse_mat.row.tolist(), sparse_mat.col.tolist()]),
+        torch.LongTensor([sparse_mat.row.tolist(),
+                          sparse_mat.col.tolist()]),
         torch.FloatTensor(sparse_mat.data.astype(np.float32)),
         shape,
     )
@@ -38,6 +38,7 @@ def spmat2tensor(sparse_mat):
 
 
 class attr_graph_dynamic_spmat_DBLP:
+
     def __init__(self, dirIn="./data/", dataset="DBLP", T=3):
         dirIn = dirIn + dataset
         # input G
@@ -51,9 +52,8 @@ class attr_graph_dynamic_spmat_DBLP:
         self.len = 0
 
         for t in range(T):
-            G_matrix = io.loadmat(
-                dirIn + "/G" + str(t) + ".mat", struct_as_record=True
-            )["G"]
+            G_matrix = io.loadmat(dirIn + "/G" + str(t) + ".mat",
+                                  struct_as_record=True)["G"]
 
             if survive is None:
                 survive = np.array(G_matrix.sum(axis=0))
@@ -62,12 +62,10 @@ class attr_graph_dynamic_spmat_DBLP:
 
         survive = np.ravel(survive > 0)
         for t in range(T):
-            G_matrix = io.loadmat(
-                dirIn + "/G" + str(t) + ".mat", struct_as_record=True
-            )["G"]
-            A_matrix = io.loadmat(
-                dirIn + "/A" + str(t) + ".mat", struct_as_record=True
-            )["A"]
+            G_matrix = io.loadmat(dirIn + "/G" + str(t) + ".mat",
+                                  struct_as_record=True)["G"]
+            A_matrix = io.loadmat(dirIn + "/A" + str(t) + ".mat",
+                                  struct_as_record=True)["A"]
             G_matrix = G_matrix.T[survive].T
             A_matrix = A_matrix.T.dot(G_matrix).T
             A = nx.DiGraph()
@@ -75,9 +73,8 @@ class attr_graph_dynamic_spmat_DBLP:
             self.Amat_list.append(A_matrix)
             G_matrix = G_matrix.T.dot(G_matrix)
             G_matrix[G_matrix > 0] = 1.0
-            G = nx.from_scipy_sparse_matrix(
-                G_matrix, create_using=nx.DiGraph()
-            )
+            G = nx.from_scipy_sparse_matrix(G_matrix,
+                                            create_using=nx.DiGraph())
             self.len = len(G.nodes())
 
             self.G_list.append(G)
@@ -86,6 +83,7 @@ class attr_graph_dynamic_spmat_DBLP:
 
 
 class attr_graph_dynamic_spmat_NIPS:
+
     def __init__(self, dirIn="./data/", dataset="NIPS", T=3):
         dirIn = dirIn + dataset
         # input G
@@ -99,9 +97,8 @@ class attr_graph_dynamic_spmat_NIPS:
         self.len = 0
 
         for t in range(T):
-            G_matrix = io.loadmat(
-                dirIn + "/G" + str(t) + ".mat", struct_as_record=True
-            )["G"]
+            G_matrix = io.loadmat(dirIn + "/G" + str(t) + ".mat",
+                                  struct_as_record=True)["G"]
             if survive is None:
                 survive = np.array(G_matrix.sum(axis=0))
             else:
@@ -109,12 +106,10 @@ class attr_graph_dynamic_spmat_NIPS:
 
         survive = np.ravel(survive > 0)
         for t in range(T):
-            G_matrix = io.loadmat(
-                dirIn + "/G" + str(t) + ".mat", struct_as_record=True
-            )["G"]
-            A_matrix = io.loadmat(
-                dirIn + "/A" + str(t) + ".mat", struct_as_record=True
-            )["A"]
+            G_matrix = io.loadmat(dirIn + "/G" + str(t) + ".mat",
+                                  struct_as_record=True)["G"]
+            A_matrix = io.loadmat(dirIn + "/A" + str(t) + ".mat",
+                                  struct_as_record=True)["A"]
 
             G_matrix = G_matrix.T[survive].T
 
@@ -125,9 +120,8 @@ class attr_graph_dynamic_spmat_NIPS:
             G_matrix = G_matrix.T.dot(G_matrix)
             G_matrix[G_matrix > 0] = 1.0
             # print(G_matrix.getrow(0))
-            G = nx.from_scipy_sparse_matrix(
-                G_matrix, create_using=nx.DiGraph()
-            )
+            G = nx.from_scipy_sparse_matrix(G_matrix,
+                                            create_using=nx.DiGraph())
             self.len = len(G.nodes())
 
             self.G_list.append(G)
@@ -136,6 +130,7 @@ class attr_graph_dynamic_spmat_NIPS:
 
 
 class attr_graph_dynamic_spmat_twitter:
+
     def __init__(self, dirIn="./data/", dataset="twitter", T=1):
         n_nodes_fortime = 10000
         dirIn = dirIn + dataset
@@ -148,21 +143,18 @@ class attr_graph_dynamic_spmat_twitter:
         self.Amat_list = []
         survive = None
         for t in range(T):
-            G_matrix = io.loadmat(
-                dirIn + "/G" + str(t) + ".mat", struct_as_record=True
-            )["G"]
+            G_matrix = io.loadmat(dirIn + "/G" + str(t) + ".mat",
+                                  struct_as_record=True)["G"]
             if survive is None:
                 survive = np.array(G_matrix.sum(axis=0)) * 1.0 / T
             else:
                 survive += np.array(G_matrix.sum(axis=0)) * 1.0 / T
         survive = np.ravel(survive > 0.1)
         for t in range(T):
-            G_matrix = io.loadmat(
-                dirIn + "/G" + str(t) + ".mat", struct_as_record=True
-            )["G"]
-            A_matrix = io.loadmat(
-                dirIn + "/A" + str(t) + ".mat", struct_as_record=True
-            )["A"]
+            G_matrix = io.loadmat(dirIn + "/G" + str(t) + ".mat",
+                                  struct_as_record=True)["G"]
+            A_matrix = io.loadmat(dirIn + "/A" + str(t) + ".mat",
+                                  struct_as_record=True)["A"]
             G_matrix = G_matrix[survive]
             G_matrix = G_matrix[:, survive][:n_nodes_fortime, :n_nodes_fortime]
             A_matrix = A_matrix[survive][:n_nodes_fortime, :n_nodes_fortime]
@@ -170,9 +162,8 @@ class attr_graph_dynamic_spmat_twitter:
             self.A_list.append(A)
             self.Amat_list.append(A_matrix)
             G_matrix[G_matrix > 0] = 1.0
-            G = nx.from_scipy_sparse_matrix(
-                G_matrix, create_using=nx.DiGraph()
-            )
+            G = nx.from_scipy_sparse_matrix(G_matrix,
+                                            create_using=nx.DiGraph())
 
             self.len = len(G.nodes())
             print(self.len)
