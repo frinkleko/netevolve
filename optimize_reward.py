@@ -1,35 +1,24 @@
 # Standard Library
-import random
 from enum import IntEnum
 
-# Third Party Library
-import numpy as np
+# Third Party Libraries
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tqdm import tqdm
 
-# First Party Library
+# First Party Libraries
 import config
 from init_real_data import init_real_data
 
 device = config.select_device
 
-
-class Interest(IntEnum):
-    RED = 2
-    BLUE = 1
-
-
 class Model(nn.Module):
 
     def __init__(self, alpha, beta, gamma, delta):
         super().__init__()
-
         self.alpha = nn.Parameter(alpha, requires_grad=True).to(device)
         self.beta = nn.Parameter(beta, requires_grad=True).to(device)
         self.gamma = nn.Parameter(gamma, requires_grad=True).to(device)
-        return
 
 
 class Optimizer:
@@ -39,15 +28,14 @@ class Optimizer:
         self.feats = feats
         self.model = model
         self.size = size
-
         self.optimizer = optim.SGD(self.model.parameters(), lr=0.001)
-        return
 
     def optimize(self, t: int):
         feat = self.feats[t].to(device)
         edge = self.edges[t].to(device)
         self.optimizer.zero_grad()
-        dot_product = torch.matmul(feat, torch.t(feat)).to(device)
+
+        dot_product = torch.matmul(feat, feat.t()).to(device)
         sim = torch.mul(edge, dot_product)
         sim = torch.mul(sim, self.model.alpha)
         sim = torch.add(sim, 0.001)
@@ -58,16 +46,14 @@ class Optimizer:
         reward = torch.sub(sim, costs)
 
         if t > 0:
-            reward += (torch.sum(
+            reward += torch.sum(
                 torch.softmax(torch.abs(self.feats[t] - self.feats[t - 1]),
                               dim=1),
                 dim=1,
-            ) * self.model.gamma)
+            ) * self.model.gamma
 
         loss = -reward.sum()
-
         loss.backward()
-        del loss
         self.optimizer.step()
 
     def export_param(self):
@@ -75,7 +61,6 @@ class Optimizer:
             max_alpha = 1.0
             max_beta = 1.0
             max_gamma = 1.0
-            # max_delta = 1.0
 
             for i in range(self.size):
                 f.write("{},{},{},{}\n".format(
@@ -97,6 +82,8 @@ if __name__ == "__main__":
 
     model = Model(alpha, beta, gamma, delta)
     optimizer = Optimizer(data.adj, data.feature, model, data_size)
+
     for t in range(5):
         optimizer.optimize(t)
+
     optimizer.export_param()

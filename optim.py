@@ -1,81 +1,74 @@
 # Standard Library
 import gc
 import os
-from typing import List
 
-# Third Party Library
+# Third Party Libraries
 import numpy as np
 import optuna
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 
-# First Party Library
+# First Party Libraries
 import config
-from agent import Agent
 from agent_policy import AgentPolicy
 from env import Env
 from init_real_data import init_real_data
 
+# Environment settings
 os.environ["OMP_NUM_THREADS"] = "16"
 os.environ["MKL_NUM_THREADS"] = "16"
 os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
 print(torch.__config__.parallel_info())
-episodes = 32
-story_count = 32
-generate_count = 5
-device = config.select_device
 
-nodes: List[Agent] = []
+# Constants
+EPISODES = 32
+STORY_COUNT = 32
+GENERATE_COUNT = 5
 LEARNED_TIME = 2
 GENERATE_TIME = 3
 TOTAL_TIME = 5
-
-# lr = 0.1
-# p_gamma = 0.8
-attrs = []
+DEVICE = config.select_device
 
 
 def execute_data(trial) -> float:
-    np_alpha = []
-    np_beta = []
-    np_gamma = []
-    np_delta = []
+    # Hyperparameters
     lr = trial.suggest_float("lr", 1e-6, 1e-1, log=True)
     p_gamma = trial.suggest_float("p_gamma", 0.1, 0.98, log=True)
+
+    # Load data
+    np_alpha, np_beta, np_gamma, np_delta = [], [], [], []
     with open("model.param.data.fast", "r") as f:
         lines = f.readlines()
-        for index, line in enumerate(
-                tqdm(lines, desc="load data", postfix="range", ncols=80)):
-            datus = line[:-1].split(",")
+        for line in tqdm(lines, desc="load data", ncols=80):
+            datus = line.strip().split(",")
             np_alpha.append(np.float32(datus[0]))
             np_beta.append(np.float32(datus[1]))
             np_gamma.append(np.float32(datus[2]))
             np_delta.append(np.float32(datus[3]))
 
-    # Define parameters of policy function
-    T = np.ones(np_alpha.shape, dtype=np.float32)
-    e = np.ones(np_beta.shape, dtype=np.float32)
-    r = np.ones(np_alpha.shape, dtype=np.float32)
-    w = np.ones(np_alpha.shape, dtype=np.float32)
-    m = np.ones(np_alpha.shape, dtype=np.float32)
+    # Convert data to numpy arrays
+    np_alpha, np_beta, np_gamma, np_delta = map(
+        np.array, (np_alpha, np_beta, np_gamma, np_delta))
 
-    # Define parameters of reward Function
-    alpha = torch.ones(np_alpha.shape, dtype=torch.float32).to(device)
-    beta = torch.ones(np_beta.shape, dtype=torch.float32).to(device)
-    gamma = torch.ones(np_gamma.shape, dtype=torch.float32).to(device)
-    delta = torch.ones(np_delta.shape, dtype=torch.float32).to(device)
+    # Define parameters
+    T, e, r, w, m = [
+        np.ones(np_alpha.shape, dtype=np.float32) for _ in range(5)
+    ]
+    alpha, beta, gamma, delta = [
+        torch.ones(arr.shape, dtype=torch.float32).to(DEVICE)
+        for arr in (np_alpha, np_beta, np_gamma, np_delta)
+    ]
 
+    # Initialize AgentPolicy and optimizer
     agent_policy = AgentPolicy(r=r, W=w, T=T, e=e, m=m)
     agent_optimizer = optim.Adadelta(agent_policy.parameters(), lr=lr)
 
     N = len(np_alpha)
     del np_alpha, np_beta, np_gamma, np_delta
-    """_summary_
-    setup data
-    """
+
+    # Load environment data
     load_data = init_real_data()
     field = Env(
         edges=load_data.adj[LEARNED_TIME].detach().clone(),
@@ -85,11 +78,9 @@ def execute_data(trial) -> float:
         beta=beta,
         gamma=gamma,
     )
-    memory = []
-    for episode in tqdm(range(episodes),
-                        desc="episode",
-                        postfix="range",
-                        ncols=100):
+
+    # Training loop
+    for episode in tqdm(range(EPISODES), desc="episode", ncols=100):
         if episode == 0:
             field.reset(
                 load_data.adj[LEARNED_TIME].clone(),
@@ -97,112 +88,70 @@ def execute_data(trial) -> float:
             )
 
         total_reward = 0
-        for i in tqdm(range(story_count),
-                      desc="story",
-                      postfix="range",
-                      ncols=100):
-            memory = []
+        memory = []
+
+        for _ in tqdm(range(STORY_COUNT), desc="story", ncols=100):
             reward = 0
             neighbor_state, feat = field.state()
-
             action_probs, predict_feat, _ = agent_policy.predict(
                 edges=neighbor_state, attributes=feat, N=N)
-
-            # field.update_attributes(predict_feat.detach())
-            # reward = field.step(action_probs.detach().clone())
             reward = field.future_step(action_probs.detach().clone(),
                                        predict_feat.detach())
-
             total_reward += reward
-
             memory.append((reward, action_probs))
 
         if not memory:
             continue
+
         G, loss = 0, 0
         for reward, prob in reversed(memory):
             G = reward + p_gamma * G
             loss += -torch.sum(torch.log(prob) * G)
         agent_optimizer.zero_grad()
-
         loss.backward()
-        del loss
-
         agent_optimizer.step()
 
     gc.collect()
 
+    # Evaluation
     field.reset(
         load_data.adj[LEARNED_TIME].clone(),
         load_data.feature[LEARNED_TIME].clone(),
     )
-    edge_auc = 0
-    attr_auc = 0
-    attr_auc_log = []
-    edge_auc_log = []
+    edge_auc, attr_auc = 0, 0
     for t in range(TOTAL_TIME - GENERATE_TIME):
         gc.collect()
         neighbor_state, feat = field.state()
-
         action_probs, predict_feat, attr_probs = agent_policy.predict(
             edges=neighbor_state, attributes=feat, N=N)
-        del neighbor_state, feat
 
         reward = field.future_step(action_probs, predict_feat)
 
-        target_prob = torch.ravel(predict_feat).to("cpu")
-        del attr_probs
-        gc.collect()
-        detach_attr = (torch.ravel(load_data.feature[GENERATE_TIME +
-                                                     t]).detach().to("cpu"))
+        # Attribute AUC
+        target_prob = predict_feat.reshape(-1).cpu().detach().numpy()
+        detach_attr = load_data.feature[GENERATE_TIME +
+                                        t].reshape(-1).detach().cpu().numpy()
         detach_attr[detach_attr > 0] = 1.0
-        pos_attr = detach_attr.numpy()
-        attr_numpy = np.concatenate([pos_attr], 0)
-        target_prob = target_prob.to("cpu").detach().numpy()
-
-        attr_predict_probs = np.concatenate([target_prob], 0)
         try:
-            auc_actv = roc_auc_score(attr_numpy, attr_predict_probs)
+            auc_actv = roc_auc_score(detach_attr, target_prob)
             attr_auc += auc_actv / (TOTAL_TIME - GENERATE_TIME)
-            attr_auc_log.append(auc_actv)
         except ValueError as ve:
             print(ve)
-            pass
         finally:
-            print("attr auc, t={}:".format(t), auc_actv)
-            # print("attr nll, t={}:".format(t), error_attr.item())
-        del (
-            target_prob,
-            pos_attr,
-            attr_numpy,
-            attr_predict_probs,
-            auc_actv,
-        )
-        gc.collect()
+            print(f"attr auc, t={t}: {auc_actv}")
 
-        target_prob = torch.ravel(action_probs).to("cpu")
-        del action_probs
-        gc.collect()
-        detach_edge = (torch.ravel(load_data.adj[GENERATE_TIME +
-                                                 t]).detach().to("cpu"))
-        pos_edge = detach_edge.numpy()
-        edge_numpy = np.concatenate([pos_edge], 0)
-        target_prob = target_prob.to("cpu").detach().numpy()
-
-        edge_predict_probs = np.concatenate([target_prob], 0)
-
+        # Edge AUC
+        target_prob = action_probs.reshape(-1).cpu().detach().numpy()
+        detach_edge = load_data.adj[GENERATE_TIME +
+                                    t].reshape(-1).detach().cpu().numpy()
         try:
-            auc_actv = roc_auc_score(edge_numpy, edge_predict_probs)
+            auc_actv = roc_auc_score(detach_edge, target_prob)
             edge_auc += auc_actv / (TOTAL_TIME - GENERATE_TIME)
-            edge_auc_log.append(auc_actv)
         except ValueError as ve:
             print(ve)
-            pass
         finally:
-            print("-------")
-            print("edge auc, t={}:".format(t), auc_actv)
-            # print("edge nll, t={}:".format(t), error_edge.item())
-            print("-------")
+            print(f"-------\nedge auc, t={t}: {auc_actv}\n-------")
+
     del field
 
     return (edge_auc + attr_auc) / 2
@@ -211,5 +160,4 @@ def execute_data(trial) -> float:
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
     study.optimize(execute_data, n_trials=100)
-    # print("Best Average AUC:", study.best_value)
     print("Best learning rate:", study.best_params["lr"])
