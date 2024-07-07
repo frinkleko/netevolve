@@ -18,10 +18,13 @@ class LoadDataset:
         self.feature = feature
 
 
-def init_real_data() -> LoadDataset:
-    # input_graph = attr_graph_dynamic_spmat_twitter(T=TOTAL_TIME)
-    input_graph = attr_graph_dynamic_spmat_NIPS(T=TOTAL_TIME)
-    # input_graph = attr_graph_dynamic_spmat_DBLP(T=TOTAL_TIME)
+def init_real_data(dataset="NIPS") -> LoadDataset:
+    if dataset == "DBLP":
+        input_graph = attr_graph_dynamic_spmat_DBLP(T=TOTAL_TIME)
+    elif dataset == "NIPS":
+        input_graph = attr_graph_dynamic_spmat_NIPS(T=TOTAL_TIME)
+    elif dataset == "twitter":
+        input_graph = attr_graph_dynamic_spmat_twitter(T=TOTAL_TIME)
     adj = input_graph.Gmat_list
     feature = input_graph.Amat_list
 

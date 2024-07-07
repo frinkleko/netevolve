@@ -5,34 +5,32 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-# First Party Library
-import config
-
-device = config.select_device
-
 
 class AgentPolicy(nn.Module):
 
-    def __init__(self, T, e, r, W, m) -> None:
+    def __init__(self, T, e, r, W, m, device) -> None:
         super().__init__()
-        self.T = nn.Parameter(torch.tensor(T).float().to(device),
+        self.device = device
+        self.T = nn.Parameter(torch.tensor(T).float().to(self.device),
                               requires_grad=True)
-        self.e = nn.Parameter(torch.tensor(e).float().to(device),
+        self.e = nn.Parameter(torch.tensor(e).float().to(self.device),
                               requires_grad=True)
 
         # 1 * Nの行列であることを想定する
-        self.r = nn.Parameter(torch.tensor(r).float().view(-1, 1).to(device),
+        self.r = nn.Parameter(torch.tensor(r).float().view(-1,
+                                                           1).to(self.device),
                               requires_grad=True)
 
-        self.W = nn.Parameter(torch.tensor(W).float().view(-1, 1).to(device),
+        self.W = nn.Parameter(torch.tensor(W).float().view(-1,
+                                                           1).to(self.device),
                               requires_grad=True)
         # self.m = nn.Parameter(
-        #     torch.tensor(m).float().view(-1, 1).to(device), requires_grad=True
+        #     torch.tensor(m).float().view(-1, 1).to(self.device), requires_grad=True
         # )
 
     def forward(self, attributes, edges,
                 N) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        edges = (edges > 0).float().to(device)
+        edges = (edges > 0).float().to(self.device)
 
         tmp_tensor = self.W * torch.matmul(edges, attributes)
 
@@ -48,8 +46,8 @@ class AgentPolicy(nn.Module):
         return x, feat, feat_prob
 
     def forward_neg(self, edges, feat):
-        feat = feat.to(device)
-        x = torch.mm(feat, feat.t())  # 既にfeatはdeviceに存在
+        feat = feat.to(self.device)
+        x = torch.mm(feat, feat.t())  # 既にfeatはself.deviceに存在
         x.neg_().add_(1.0)  # Negate and add in place
         x.div_(self.T).exp_().mul_(self.e)  # exp and mul in place
         # x.div_(self.T).exp_()  # exp and mul in place

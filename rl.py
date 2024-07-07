@@ -11,7 +11,6 @@ from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 
 # First Party Libraries
-import config
 from agent_policy import AgentPolicy
 from env import Env
 from init_real_data import init_real_data
@@ -22,21 +21,8 @@ os.environ["MKL_NUM_THREADS"] = "16"
 os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
 print(torch.__config__.parallel_info())
 
-# Constants
-EPISODES = 32
-STORY_COUNT = 32
-GENERATE_COUNT = 5
-LEARNED_TIME = 4
-GENERATE_TIME = 5
-TOTAL_TIME = 10
-DEVICE = config.select_device
 
-# Hyperparameters
-LR = 4.414072937107742e-06
-P_GAMMA = 0.38100283002040913
-
-
-def execute_data() -> None:
+def execute_data(args) -> None:
     # Load model parameters
     np_alpha, np_beta, np_gamma, np_delta = [], [], [], []
     with open("model.param.data.fast", "r") as f:
@@ -61,14 +47,14 @@ def execute_data() -> None:
     gamma = torch.tensor(np_gamma, dtype=torch.float32).to(DEVICE)
     delta = torch.tensor(np_delta, dtype=torch.float32).to(DEVICE)
 
-    agent_policy = AgentPolicy(r=r, W=w, T=T, e=e, m=m)
+    agent_policy = AgentPolicy(r=r, W=w, T=T, e=e, m=m, device=DEVICE)
     agent_optimizer = optim.Adadelta(agent_policy.parameters(), lr=LR)
 
     N = len(np_alpha)
     del np_alpha, np_beta, np_gamma, np_delta
 
     # Setup data
-    load_data = init_real_data()
+    load_data = init_real_data(args.dataset)
     field = Env(
         edges=load_data.adj[LEARNED_TIME].clone(),
         feature=load_data.feature[LEARNED_TIME].clone(),
@@ -76,6 +62,7 @@ def execute_data() -> None:
         alpha=alpha,
         beta=beta,
         gamma=gamma,
+        device=DEVICE,
     )
 
     for episode in tqdm(range(EPISODES), desc="episode", ncols=100):
@@ -172,4 +159,23 @@ def execute_data() -> None:
 
 
 if __name__ == "__main__":
-    execute_data()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--dataset", type=str, default="NIPS")
+    args = parser.parse_args()
+
+    # Constants
+    EPISODES = 32
+    STORY_COUNT = 32
+    GENERATE_COUNT = 5
+    LEARNED_TIME = 4
+    GENERATE_TIME = 5
+    TOTAL_TIME = 10
+    DEVICE = torch.device(args.device)
+
+    # Hyperparameters
+    LR = 4.414072937107742e-06
+    P_GAMMA = 0.38100283002040913
+
+    execute_data(args)

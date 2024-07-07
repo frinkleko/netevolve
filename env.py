@@ -7,12 +7,10 @@ import torch
 # First Party Library
 import config
 
-device = config.select_device
-
 
 class Env:
 
-    def __init__(self, edges, feature, temper, alpha, beta, gamma) -> None:
+    def __init__(self, edges, feature, temper, alpha, beta, gamma, device) -> None:
         self.edges = edges
         self.feature = feature.to(device)
         self.temper = temper
