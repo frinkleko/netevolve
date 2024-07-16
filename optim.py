@@ -62,7 +62,7 @@ def execute_data(trial) -> float:
     ]
 
     # Initialize AgentPolicy and optimizer
-    agent_policy = AgentPolicy(r=r, W=w, T=T, e=e, m=m)
+    agent_policy = AgentPolicy(r=r, W=w, T=T, e=e, m=m, device=DEVICE)
     agent_optimizer = optim.Adadelta(agent_policy.parameters(), lr=lr)
 
     N = len(np_alpha)
@@ -77,6 +77,7 @@ def execute_data(trial) -> float:
         alpha=alpha,
         beta=beta,
         gamma=gamma,
+        device=DEVICE,
     )
 
     # Training loop
@@ -161,3 +162,4 @@ if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
     study.optimize(execute_data, n_trials=100)
     print("Best learning rate:", study.best_params["lr"])
+    print("Best p_gamma:", study.best_params["p_gamma"])

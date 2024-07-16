@@ -40,11 +40,4 @@ poetry run python optimize_reward.py
 poetry run python rl.py
 ```
 
-```
-Network Installer for Ubuntu22.04
-
-wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
-sudo dpkg -i cuda-keyring_1.0-1_all.deb
-sudo apt update
-sudo apt install libnccl2 libnccl-dev
-```
+`optim.py` and `rl.py` are very dulipcate code, but `optim.py` is for the optimization of hyperparameter and `rl.py` is for the training of the RL model. These two files are merged into `main.py`, with a command line option to select the mode.

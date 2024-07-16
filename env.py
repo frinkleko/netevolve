@@ -4,9 +4,6 @@ from typing import Any
 # Third Party Library
 import torch
 
-# First Party Library
-import config
-
 
 class Env:
 

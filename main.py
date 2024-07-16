@@ -262,6 +262,8 @@ if __name__ == "__main__":
                         required=True)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--dataset", type=str, default="NIPS")
+    parser.add_argument("--lr", type=float, default=4.414072937107742e-06)
+    parser.add_argument("--p_gamma", type=float, default=0.38100283002040913)
     args = parser.parse_args()
 
     # Constants
@@ -278,10 +280,19 @@ if __name__ == "__main__":
         study = optuna.create_study(direction="maximize")
         study.optimize(execute_data_optim, n_trials=100)
         print("Best learning rate:", study.best_params["lr"])
+        print("Best p_gamma:", study.best_params["p_gamma"])
     elif args.mode == "run":
         # Hyperparameters
-        LR = 4.414072937107742e-06
-        P_GAMMA = 0.38100283002040913
+        LR = args.lr
+        P_GAMMA = args.p_gamma
+        execute_data_rl(args)
+    elif args.mode == "opt_and_run":
+        study = optuna.create_study(direction="maximize")
+        study.optimize(execute_data_optim, n_trials=100)
+        print("Best learning rate:", study.best_params["lr"])
+        print("Best p_gamma:", study.best_params["p_gamma"])
+        LR = study.best_params["lr"]
+        P_GAMMA = study.best_params["p_gamma"]
         execute_data_rl(args)
     else:
         raise ValueError("Invalid mode")
