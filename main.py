@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from agent_policy import AgentPolicy
 from env import Env
-from init_real_data import init_real_data
+from data_loader import init_real_data
 
 # Environment settings
 os.environ["OMP_NUM_THREADS"] = "16"
@@ -144,7 +144,7 @@ def execute_data_optim(trial) -> float:
     del np_alpha, np_beta, np_gamma, np_delta
 
     # Load environment data
-    load_data = init_real_data(DATASET)
+    load_data = init_real_data(DATASET, device=DEVICE)
     field = Env(
         edges=load_data.adj[LEARNED_TIME].detach().clone(),
         feature=load_data.feature[LEARNED_TIME].detach().clone(),
@@ -176,7 +176,7 @@ def execute_data_rl(args) -> None:
     del np_alpha, np_beta, np_gamma, np_delta
 
     # Load environment data
-    load_data = init_real_data(DATASET)
+    load_data = init_real_data(DATASET, device=DEVICE)
     field = Env(
         edges=load_data.adj[LEARNED_TIME].clone(),
         feature=load_data.feature[LEARNED_TIME].clone(),

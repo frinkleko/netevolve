@@ -3,26 +3,19 @@ import networkx as nx
 import numpy as np
 from scipy import io
 
-# First Party Library
-import config
+# Third Party Library
+import torch
 
 np.set_printoptions(threshold=np.inf)
-device = config.select_device
 
 
-def spmat2sptensor(sparse_mat):
-    # Third Party Library
-    import torch
-
+def spmat2sptensor(sparse_mat, device):
     dense = sparse_mat.todense()
     dense = torch.from_numpy(dense.astype(np.float32)).clone().to(device)
     return dense
 
 
 def spmat2tensor(sparse_mat):
-    # Third Party Library
-    import torch
-
     shape = sparse_mat.shape
 
     sparse_mat = sparse_mat.tocoo()
@@ -169,3 +162,39 @@ class attr_graph_dynamic_spmat_twitter:
             print(self.len)
             self.G_list.append(G)
             self.Gmat_list.append(G_matrix)
+
+
+
+class LoadDataset:
+    adj = []
+    feature = []
+
+    def __init__(self, adj, feature):
+        self.adj = adj
+        self.feature = feature
+
+TOTAL_TIME = 10
+def init_real_data(dataset="NIPS", device=None) -> LoadDataset:
+    if dataset == "DBLP":
+        input_graph = attr_graph_dynamic_spmat_DBLP(T=TOTAL_TIME)
+    elif dataset == "NIPS":
+        input_graph = attr_graph_dynamic_spmat_NIPS(T=TOTAL_TIME)
+    elif dataset == "twitter":
+        input_graph = attr_graph_dynamic_spmat_twitter(T=TOTAL_TIME)
+    adj = input_graph.Gmat_list
+    feature = input_graph.Amat_list
+
+    for t in range(input_graph.T):
+        adj[t] = adj[t]
+        _ = spmat2sptensor(adj[t], device)
+
+        adj[t] = _
+        feature_ = input_graph.Amat_list[t]
+
+        _ = spmat2sptensor(feature_, device)
+        feature[t] = _
+
+    return LoadDataset(
+        adj=adj,
+        feature=feature,
+    )
