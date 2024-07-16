@@ -16,7 +16,6 @@ class AgentPolicy(nn.Module):
         self.e = nn.Parameter(torch.tensor(e).float().to(self.device),
                               requires_grad=True)
 
-        # 1 * Nの行列であることを想定する
         self.r = nn.Parameter(torch.tensor(r).float().view(-1,
                                                            1).to(self.device),
                               requires_grad=True)
@@ -24,9 +23,9 @@ class AgentPolicy(nn.Module):
         self.W = nn.Parameter(torch.tensor(W).float().view(-1,
                                                            1).to(self.device),
                               requires_grad=True)
-        # self.m = nn.Parameter(
-        #     torch.tensor(m).float().view(-1, 1).to(self.device), requires_grad=True
-        # )
+        self.m = nn.Parameter(
+            torch.tensor(m).float().view(-1, 1).to(self.device), requires_grad=True
+        )
 
     def forward(self, attributes, edges,
                 N) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -47,7 +46,7 @@ class AgentPolicy(nn.Module):
 
     def forward_neg(self, edges, feat):
         feat = feat.to(self.device)
-        x = torch.mm(feat, feat.t())  # 既にfeatはself.deviceに存在
+        x = torch.mm(feat, feat.t())
         x.neg_().add_(1.0)  # Negate and add in place
         x.div_(self.T).exp_().mul_(self.e)  # exp and mul in place
         # x.div_(self.T).exp_()  # exp and mul in place

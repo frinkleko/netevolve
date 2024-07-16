@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import argparse
 
-from data_loader  import init_real_data
+from data_loader import init_real_data
 
 
 class Model(nn.Module):

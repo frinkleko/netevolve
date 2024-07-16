@@ -7,14 +7,15 @@ import torch
 
 class Env:
 
-    def __init__(self, edges, feature, temper, alpha, beta, gamma, device) -> None:
+    def __init__(self, edges, feature, temper, alpha, beta, gamma,
+                 device) -> None:
         self.edges = edges
         self.feature = feature.to(device)
         self.temper = temper
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
-        # 特徴量の正規化
+
         norm = self.feature.norm(dim=1)[:, None] + 1e-8
         self.feature = self.feature.div_(norm)
         self.feature_t = self.feature.t()
@@ -24,13 +25,13 @@ class Env:
     def reset(self, edges, attributes) -> None:
         self.edges = edges
         self.feature = attributes
-        # 特徴量の正規化
+
         norm = self.feature.norm(dim=1)[:, None] + 1e-8
         self.feature = self.feature.div(norm)
         self.feature_t = self.feature.t()
 
     def future_step(self, edges, attributes):
-        # 特徴量の正規化
+
         norm = attributes.norm(dim=1)[:, None] + 1e-8
         attributes = attributes.div(norm)
         reward = (torch.sum(
@@ -63,7 +64,7 @@ class Env:
 
     def update_attributes(self, attributes) -> None:
         self.feature = attributes
-        # 特徴量の正規化
+
         norm = self.feature.norm(dim=1)[:, None] + 1e-8
         self.feature = self.feature.div(norm)
         self.feature_t = self.feature.t()

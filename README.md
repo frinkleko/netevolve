@@ -1,43 +1,13 @@
 # NetEvolve
 
-## Required
-
-Our checked platforms are:
-
-- Ubuntu22.04 LTS (using CUDA/x86_64)
-- Windows 11 Pro (using Windows Subsystem for Linux,CUDA/x86_64)
-- Apple Macbook Pro(M1 processor, using CPU/GPU)
-  - if you run this code using GPU acceleration, you change to "mps" in the `select_device` variable in `config.py`
-
-
-[Required]
-
-- Python 3.11.0 (or later)
-- Poetry 1.5.1 (or later)
-
-[Optional]
-
-- CUDA 12.X (using NVIDIA GPU)
-- NCCL2 required
-
-## how to run
-
-### initialize environment and create poetry virtual env
-
-```
-poetry install
-```
-
-### Test the code
-
-First, you select the dataset in the `init_real_data` and delete coment out (others 
-should comment out).
-
-Second, you execute the two programs.
-
-```
-poetry run python optimize_reward.py
-poetry run python rl.py
-```
+## Changelog
 
 `optim.py` and `rl.py` are very dulipcate code, but `optim.py` is for the optimization of hyperparameter and `rl.py` is for the training of the RL model. These two files are merged into `main.py`, with a command line option to select the mode.
+
+`config.py` is removed and the configuration is moved to `main.py`, by command line options. `init_real_data.py` is moved `data_loader.py`.
+
+## Run
+```
+python optimize_reward.py
+python main.py --mode run
+```

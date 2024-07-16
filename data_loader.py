@@ -164,7 +164,6 @@ class attr_graph_dynamic_spmat_twitter:
             self.Gmat_list.append(G_matrix)
 
 
-
 class LoadDataset:
     adj = []
     feature = []
@@ -173,7 +172,10 @@ class LoadDataset:
         self.adj = adj
         self.feature = feature
 
+
 TOTAL_TIME = 10
+
+
 def init_real_data(dataset="NIPS", device=None) -> LoadDataset:
     if dataset == "DBLP":
         input_graph = attr_graph_dynamic_spmat_DBLP(T=TOTAL_TIME)
